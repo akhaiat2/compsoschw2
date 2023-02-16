@@ -1,0 +1,108 @@
+---
+title: "Regression Assignment"
+author: "Anthony Khaiat"
+date: "2023-01-10"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Assignment 1: Regression
+
+You will be working with a dataset of Chicago neighborhoods for this assignment. You can find it on Canvas under Files/Week2/Chicago_Community_Areas.csv
+
+1.  Begin by loading the ggplot2 library and importing the Chicago Community Areas dataset into R. (Be sure that your slashes are in the right direction and that you include the ".csv" extension at the end of the file name). Output the first three rows and first five columns.
+
+    ```{r}
+    library("ggplot2")
+    chicago <- read.csv("Chicago_Community_Areas.csv")
+    chicago[1:3,1:5]
+    ```
+
+2.  How many observations (cases) are in the dataset? How many variables?
+
+    ```{r}
+    # of Variables
+    ncol(chicago)
+    # of of Observations
+    nrow(chicago)
+    ```
+
+3.  Print the names of all the variables in the dataset.
+
+    ```{r}
+    colnames(chicago)
+    ```
+
+4.  The CommunityBelonging variable shows the percentage of residents of a neighborhood who agreed that they "really feel part of their neighborhood." We want to figure out what factors are associated with community belonging. One plausible hypothesis is that neighborhoods with more children would have a greater sense of community belonging.
+
+    As a first step, let's visualize the relationship between % minors in the population and community belonging. Create a scatterplot of these two variables (with community belonging as the dependent variable) and include a line-of-best fit. What does the line of best fit suggest about the relationship between population size and community belonging? (*note: it is okay if you get an error message about 1 case missing data)*
+
+    ```{r}
+    ggplot(data=chicago,aes(x=Minors,y=CommunityBelonging)) + 
+      geom_point()+
+      geom_smooth(method="lm", se=FALSE)
+    ```
+
+    There is a slight negative relationship between % minors and community belonging.
+
+5.  Produce the output for the linear model of % minors predicting community belonging. What is the slope of the line of best fit? What is its intercept?
+
+    ```{r}
+    lm(CommunityBelonging ~ Minors,data=chicago)
+    ```
+
+    The slope of the line of best fit is -0.7083. The intercept is 76.7046.
+
+6.  What if we control for the poverty rate in the neighborhood? What happens to the effect of % minors on community involvement? Describe how this changes our understanding of the relationship between % minors and community belonging.
+
+    ```{r}
+    lm(CommunityBelonging ~ Minors + Poverty ,data=chicago)
+    ```
+
+    If we control for the poverty rate of the neighborhood, the effect of % minors on community involvement decreases. This change explains our understanding between the relationship of % minors and community belongings as there are other factors, outside of % minors, that effect community involvement, including poverty rate.
+
+7.  What level of community belonging would we predict for a neighborhood with 20% minors and 30% in poverty?
+
+    ```{r}
+    77.6332 - 0.2469*(20) - 0.5712*(30)
+    ```
+
+8.  Let's create a variable for Southside. We will define Southside as any neighborhood with a lattitude below 41.866. Use the table() command to find how many Southside neighborhoods there are.
+
+    ```{r}
+    Southside <- ifelse(chicago$Latitude<41.866,1,0)
+    table(Southside)
+
+    ```
+
+    There are 46 Southside neighborhoods.
+
+9.  Now let's make a model to predict if a neighborhood is on the Southside. Use the Particulates variable as your explanatory variable. Checking our metadata file, we see that the particulates variable measures "annual average concentration in micrograms per cubic meter. PM 2.5; or particulate matter smaller than 2.5 microns in diameter; is one of the most dangerous pollutants because the particles can penetrate deep into the alveoli of the lungs." Interpret the direction of the effect.
+
+    ```{r}
+    #chicago$smallParticulates <- ifelse(chicago$Particulates<2.5,1,0)
+    particulateLog <- glm(Southside ~ Particulates, family="binomial", data=chicago)
+    summary(particulateLog)
+    ```
+
+    The direction of the effect is positive (7.031) which means that a 1% increase in Particulates causes a 7.031% increase in the likelihood a neighborhood is Southside.
+
+10. Extra credit! How well would our model do if we had to successfully predict if a neighborhood is in the Southside based solely on particulate concentration? Let's assume a prediction threshold of 0.5; those cases with a predicted probability of over 0.5 are classified as 1, those with a probability lower than 0.5 are classified as 0. What fraction of the observations were correctly classified?
+
+![]()
+
+```{r}
+#Run logistic regression of particulates predicting Southside
+particulate_model<-glm(Southside ~ Particulates,family="binomial",data=chicago)
+#Calculate predicted probabilities of being Southside for each neighborhood
+probs<-predict(particulate_model,newdata=chicago,type='response')
+#Save predicted probabilities as a new column in your dataframe
+chicago$probability<-probs
+#Turn predicted probabilities into 1 if greater than 0.5, 0 if less
+chicago$predict_southside <- ifelse(chicago$probability>.5,1,0)
+#Make a table to predicted southside vs.  actual southside measure. Correct classifications are (1,1) or (0,0)
+table(chicago$predict_southside,chicago$Southside)
+#Correctly classified neighborhoods over total neighborhoods
+n(chicago$predict_southside)
+```
